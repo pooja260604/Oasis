@@ -1,0 +1,204 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class OnlineExam {
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final String[][] questions = {
+            {"What is 2 + 2?", "3", "4", "5", "6", "1"}, // Correct answer index is 1 ("4")
+            {"What is 3 * 3?", "6", "7", "9", "12", "2"}, // Correct answer index is 2 ("9")
+            {"What is 10 / 2?", "3", "4", "5", "6", "2"}, // Correct answer index is 2 ("5")
+            {"What is 10 - 3?", "12", "7", "13", "1", "1"}, // Correct answer index is 1 ("7")
+            {"What is 6 * 10?", "60", "70", "91", "100", "0"}, // Correct answer index is 0 ("60")
+            {"What is 0 + 1?", "6", "1", "90", "0", "1"}  // Correct answer index is 1 ("1")
+    };
+    private static final Map<String, String> users = new HashMap<>();
+    private static final Map<String, Boolean> attemptedExams = new HashMap<>();
+    private static String loggedInUser = null;
+    private static int score = 0;
+    private static boolean examOngoing = false;
+    private static long endTime;
+
+    public static void main(String[] args) {
+        displayMainMenu();
+    }
+
+    private static void displayMainMenu() {
+        System.out.println("Welcome to the Online Math Examination System");
+        System.out.println("1. Register");
+        System.out.println("2. Login");
+        System.out.println("3. Update Profile");
+        System.out.print("Choose an option (1-3): ");
+        int choice = scanner.nextInt();
+        scanner.nextLine(); 
+
+        switch (choice) {
+            case 1:
+                register();
+                break;
+            case 2:
+                login();
+                break;
+            case 3:
+                updateProfile();
+                break;
+            default:
+                System.out.println("Invalid option. Please try again.");
+                displayMainMenu();
+                break;
+        }
+    }
+
+    private static void register() {
+        System.out.print("Enter a Username: ");
+        String newUsername = scanner.nextLine();
+
+        if (users.containsKey(newUsername)) {
+            System.out.println("Username already exists. Please try again.");
+            return; 
+        }
+
+        System.out.print("Enter a Password: ");
+        String newPassword = scanner.nextLine();
+
+        users.put(newUsername, newPassword);
+        attemptedExams.put(newUsername, false);
+        System.out.println("Registration Successful! You can now login.\n");
+        displayMainMenu();
+    }
+
+    private static void login() {
+        System.out.print("Enter Username: ");
+        String enteredUsername = scanner.nextLine();
+
+        System.out.print("Enter Password: ");
+        String enteredPassword = scanner.nextLine();
+
+        if (users.containsKey(enteredUsername) && users.get(enteredUsername).equals(enteredPassword)) {
+            System.out.println("Login Successful!\n");
+            loggedInUser = enteredUsername;
+            if (attemptedExams.get(loggedInUser)) {
+                System.out.println("You have already attempted the exam. Logging out...");
+                loggedInUser = null;
+                displayMainMenu();
+            } else {
+                startExam();
+            }
+        } else {
+            System.out.println("Invalid credentials. Try again.\n");
+            login();
+        }
+    }
+
+    private static void updateProfile() {
+        System.out.print("Enter your current Username: ");
+        String currentUsername = scanner.nextLine();
+
+        System.out.print("Enter your current Password: ");
+        String currentPassword = scanner.nextLine();
+
+        if (users.containsKey(currentUsername) && users.get(currentUsername).equals(currentPassword)) {
+            System.out.print("Enter new Username: ");
+            String newUsername = scanner.nextLine();
+
+            if (users.containsKey(newUsername)) {
+                System.out.println("Username already exists. Please try again.");
+                return; 
+            }
+
+            System.out.print("Enter new Password: ");
+            String newPassword = scanner.nextLine();
+
+            users.remove(currentUsername);
+            users.put(newUsername, newPassword);
+            attemptedExams.put(newUsername, attemptedExams.remove(currentUsername));
+            loggedInUser = newUsername;
+
+            System.out.println("Profile updated successfully!\n");
+        } else {
+            System.out.println("Invalid current credentials. Try again.");
+        }
+        displayMainMenu();
+    }
+
+    private static void startExam() {
+        Timer timer = new Timer();
+        endTime = System.currentTimeMillis() + 3 * 60 * 1000; // 3 minutes in milliseconds
+
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (examOngoing) {
+                    endExam();
+                }
+            }
+        }, 3 * 60 * 1000); // 3 minutes in milliseconds
+
+        examOngoing = true;
+        score = 0; // Reset score for each exam
+        for (int i = 0; i < questions.length && examOngoing; i++) {
+            System.out.println(questions[i][0]);
+            for (int j = 1; j <= 4; j++) {
+                System.out.println(j + ": " + questions[i][j]);
+            }
+            System.out.print("Select your answer (1-4): ");
+            int answer = scanner.nextInt();
+            scanner.nextLine(); 
+
+            
+            int correctAnswerIndex = Integer.parseInt(questions[i][5]);
+            if (answer - 1 == correctAnswerIndex) {
+                score++;
+            }
+            displayRemainingTime();
+            
+            System.out.println("Correct Answer: " + questions[i][correctAnswerIndex + 1]);
+        }
+        if (examOngoing) {
+            endExam();
+        }
+    }
+
+    private static void displayRemainingTime() {
+        long currentTime = System.currentTimeMillis();
+        long timeLeft = endTime - currentTime;
+        if (timeLeft > 0) {
+            System.out.println("Time left: " + timeLeft / 1000 + " seconds");
+        } else {
+            endExam();
+        }
+    }
+
+    private static void endExam() {
+        if (!examOngoing) return;
+        examOngoing = false;
+        attemptedExams.put(loggedInUser, true);
+        System.out.println("\nTime's up! Exam Over!");
+        displayResult();
+    }
+
+    private static void displayResult() {
+        System.out.println("Your score is: " + score + "/" + questions.length);
+
+        if (score == questions.length) {
+            System.out.println("Grade: A");
+        } else if (score == questions.length - 1) {
+            System.out.println("Grade: A+");
+        } else if (score == questions.length - 2) {
+            System.out.println("Grade: B");
+        } else if (score == questions.length - 3) {
+            System.out.println("Grade: B+");
+        } else if (score == questions.length - 4) {
+            System.out.println("Grade: C");
+        } else if (score == questions.length - 5) {
+            System.out.println("Grade: C+");
+        } else {
+            System.out.println("Grade: F");
+        }
+
+        System.out.println("\nThank you for taking the exam. Logging out...");
+        loggedInUser = null;
+    }
+}
